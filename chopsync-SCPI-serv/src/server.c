@@ -1,12 +1,13 @@
 /**************************************************
  ***                                            ***
- ***  chopsync TCP server (SCPI)                ***
+ ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 3 2024                    ***
+ ***  latest rev: jun 17 2024                   ***
  ***                                            ***
  **************************************************/ 
 
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,22 +16,146 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+//#include <stdbool.h>
 
 #define PORT    8888
 #define MAXMSG  512
 
+#define READ  1
+#define WRITE 0
+
+#define ERRS "ERR"
+#define OKS  "OK"
+
+#define MAXREG 12
+
 /***  protos  ***/
 
-int read_from_client(int filedes);
-int main(int argc, char *const argv[]);
+void   upstring(char *s);
+void   trimstring(char* s);
+void   parse(char *buf, char *ans, size_t maxlen);
+int    read_from_client(int filedes);
+int    main(int argc, char *const argv[]);
 
 
 /***  implementation  ***/
+
+void upstring(char *s)
+  {
+  char *p;
+  for(p=s; p*; p++)
+    *p=toupper((unsigned char) *p);
+  }
+
+
+//-------------------------------------------------------------------
+
+void trimstring(char* s)
+  {
+  char   *begin, *end;
+  char   wbuf[MAXMSG+1];
+  size_t len;
+
+  len=strlen(s);
+  if(!len)
+    return;
+  
+  for(end=s+len-1; end >=s && isspace(*end); end--)
+    ;
+  for(begin=s; begin <=end && isspace(*begin); begin++)
+    ;
+  
+  len=end-begin;
+  // must use memcpy because I don't have proper 0-termination yet
+  memcpy(wbuf, begin, len);
+  wbuf[len+1]=0;
+  // I can use strcpy as now I have proper 0-termination
+  (void) strcpy(s, wbuf);
+  return len;
+  }
+
+
+//-------------------------------------------------------------------
+
+void parse(char *buf, char *ans, size_t maxlen)
+  {
+  char *p;
+  int rw, n;
+  unsigned int reg, val;
+
+  trimstring(buf);
+  upstring(buf);
+
+  p=strtok(buf,'?');
+  if(p!=NULL)
+    {
+    rw=READ;
+    }
+    {
+    rw=WRITE;
+    p=strtok(buf,' ');
+    }
+
+  if( (strcmp(p,"REG")=0) || (strcmp(p,"REGISTER")=0))
+    {
+    p=strtok(NULL,' ');
+    if(p!=NULL)
+      {
+      n=sscanf(p,"%x",&reg);
+      if(n==0 || reg>MAXREG)
+        {
+        snprintf(ans, maxlen, "%s: no such register\n", ERRS);    
+        }
+      else
+        {
+        if(rw==WRITE)
+          {
+          p=strtok(NULL,' ');
+          if(p!=NULL)
+            {
+            n=sscanf(p,"%x",&val);
+            if(n==0)
+              {
+              snprintf(ans, maxlen, "%s: invalid value to write into register\n", ERRS);
+              }
+            else
+              {
+              // WRITE REGISTER
+              snprintf(ans, maxlen, "%s: write 0x%08X into register 0x%X\n", OKS, val, reg);
+              }
+            }
+          else
+            snprintf(ans, maxlen, "%s: missing value to write into register\n", ERRS);
+          }
+        else
+          {
+          // READ REGISTER
+          snprintf(ans, maxlen, "%s: read register 0x%X\n", OKS, reg);
+          }
+        }
+      }
+    else
+      {
+      snprintf(ans, maxlen, "%s: missing register number\n", ERRS);
+      }
+    }
+  else if(strcmp(p,"*IDN")=0)
+    {
+    
+    }
+  else
+    {
+    snprintf(ans, maxlen, "%s: no such command\n", ERRS);
+    }
+  }
+
+//-------------------------------------------------------------------
 
 int read_from_client(int filedes)
   {
   char buffer[MAXMSG+1];    // "+1" to add zero-terminator
   char echomsg[2*MAXMSG]="OK:";
+  char answer[MAXMSG+1];
   int  nbytes;
   
   nbytes = read(filedes, buffer, MAXMSG);
@@ -50,9 +175,8 @@ int read_from_client(int filedes)
     // data read
     buffer[nbytes]=0;    // add string zero terminator
     fprintf(stderr, "Incoming msg: '%s'\n", buffer);
-    // echo
-    strcat(echomsg, buffer);
-    nbytes = write(filedes, echomsg, strlen(echomsg));
+    parse(buffer, answer, MAXMSG);
+    nbytes = write(filedes, answer, strlen(answer));
     return 0;
     }
   }
