@@ -37,4 +37,7 @@
 #define REGBANK_BASE 0xA0000000
 #define REGBANK_SIZE 256
 
+#define PRODUCT_FNAME "/etc/petalinux/product"
+#define VERSION_FNAME "/etc/petalinux/version"
+
 #endif

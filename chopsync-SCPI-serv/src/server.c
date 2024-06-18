@@ -22,6 +22,7 @@ void         parseREG(char *ans, size_t maxlen, int rw);
 void         parseIDN(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
+void         sendback(int filedes, char *s);
 int          read_from_client(int filedes);
 int          main(int argc, char *const argv[]);
 
@@ -152,7 +153,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
       else
         {
         // READ REGISTER
-        snprintf(ans, maxlen, "%s: read register 0x%X: 0x%08X\n", OKS, reg, readreg(reg));
+        snprintf(ans, maxlen, "%s: 0x%08X in register 0x%X\n", OKS, readreg(reg), reg);
         }
       }
     }
@@ -166,7 +167,35 @@ void parseREG(char *ans, size_t maxlen, int rw)
 
 void parseIDN(char *ans, size_t maxlen, int rw)
   {
+  FILE *fd;
+  char prod[MAXMSG+1], ver[MAXMSG+1];
+  int n;
 
+  // firmware name
+  fd = fopen(PRODUCT_FNAME, "r");
+  if(fd!=NULL)
+    {
+    n=fscanf(fd,"%s",prod);
+    fclose(fd);
+    if(n==0)
+      strcpy(prod,"Unknown Firmware");
+    }
+  else
+    strcpy(prod,"Unknown Firmware");
+  
+  // firmware version
+  fd = fopen(VERSION_FNAME, "r");
+  if(fd!=NULL)
+    {
+    n=fscanf(fd,"%s",ver);
+    fclose(fd);
+    if(n==0)
+      strcpy(ver,"Unknown");
+    }
+  else
+    strcpy(ver,"Unknown");
+  
+  snprintf(ans, MAXMSG, "%s - version %s\n", prod, ver);
   }
 
 
@@ -174,7 +203,14 @@ void parseIDN(char *ans, size_t maxlen, int rw)
 
 void printHelp(int filedes)
   {
-  
+  sendback(filedes,"Chopsync SCPI server commands\n\n");
+  sendback(filedes,"Server is case insensitive\n");
+  sendback(filedes,"numbers can be decimal or hex, with the 0x prefix\n");
+  sendback(filedes,"Server answers with OK or ERR, a colon and a descriptive message\n\n");
+  sendback(filedes,"Command list:\n\n");
+  sendback(filedes,"REGister <reg> <value> : write <value> into register <reg>\n");
+  sendback(filedes,"REGister? <reg>        : read content of register <reg>\n");
+  sendback(filedes,"*IDN?                  : print firmware name and version\n");
   }
 
 
@@ -218,6 +254,15 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     }
   }
 
+
+//-------------------------------------------------------------------
+
+void sendback(int filedes, char *s)
+  {
+  (void)write(filedes, s, strlen(s));
+  }
+
+
 //-------------------------------------------------------------------
 
 int read_from_client(int filedes)
@@ -244,7 +289,7 @@ int read_from_client(int filedes)
     buffer[nbytes]=0;    // add string zero terminator
     fprintf(stderr, "Incoming msg: '%s'\n", buffer);
     parse(buffer, answer, MAXMSG, filedes);
-    nbytes = write(filedes, answer, strlen(answer));
+    sendback(filedes, answer);
     return 0;
     }
   }
