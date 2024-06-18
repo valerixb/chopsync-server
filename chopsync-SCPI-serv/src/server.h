@@ -24,6 +24,8 @@
 //#include <stdbool.h>
 #include <stdint.h>
 #include <sys/mman.h>
+#include <errno.h>
+#include <math.h>
 
 #define PORT    8888
 #define MAXMSG  512
@@ -39,5 +41,10 @@
 
 #define PRODUCT_FNAME "/etc/petalinux/product"
 #define VERSION_FNAME "/etc/petalinux/version"
+
+#define SYNCH_RESET_MASK 0x0004
+
+#define MAX_SETPOINT_CNTS 65535
+#define PHSETPOINT_MASK 0x0001FFFF
 
 #endif

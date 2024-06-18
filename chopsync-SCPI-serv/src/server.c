@@ -20,6 +20,9 @@ void         upstring(char *s);
 void         trimstring(char* s);
 void         parseREG(char *ans, size_t maxlen, int rw);
 void         parseIDN(char *ans, size_t maxlen, int rw);
+void         parseSYNCHRONIZER(char *ans, size_t maxlen, int rw);
+void         parseRST(char *ans, size_t maxlen, int rw);
+void         parsePHSETP(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);
@@ -163,6 +166,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
     }
   }
 
+
 //-------------------------------------------------------------------
 
 void parseIDN(char *ans, size_t maxlen, int rw)
@@ -214,6 +218,99 @@ void parseSTB(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+void parseSYNCHRONIZER(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  
+  if(rw==READ)
+    {
+    // read synchronizer on/off state
+    if((readreg(1) & SYNCH_RESET_MASK) == 0)
+      snprintf(ans, maxlen, "%s: ON\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    }
+  else
+    {
+    // turn synchronizer on/off
+    
+    // next in line is ON or OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"ON")==0)
+        {
+        writereg(1,readreg(1) & ~SYNCH_RESET_MASK);
+        snprintf(ans, maxlen, "%s: SYNCHRONIZER is now ON\n", OKS);
+        }
+      else if(strcmp(p,"OFF")==0)
+        {
+        writereg(1,readreg(1) | SYNCH_RESET_MASK);
+        snprintf(ans, maxlen, "%s: SYNCHRONIZER is now OFF\n", OKS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use ON/OFF with SYNCHRONIZER command\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing ON/OFF option\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseRST(char *ans, size_t maxlen, int rw)
+  {
+  writereg(1,readreg(1) | SYNCH_RESET_MASK);
+  snprintf(ans, maxlen, "%s: SYNCHRONIZER is now OFF\n", OKS);        
+  }
+
+
+//-------------------------------------------------------------------
+
+void parsePHSETP(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  
+  if(rw==READ)
+    {
+    // read phase setpoint and convert it to ns
+    n=(int)readreg(3);
+    snprintf(ans, maxlen, "%s: %d ns\n", OKS, n*8);
+    }
+  else
+    {
+    // set new phase setpoint
+    
+    // next in line is the desired setpoint in ns
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      n=(int)strtol(p, NULL, 10);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid setpoint value\n", ERRS);
+      else
+        {
+        n=round(n/8.);
+        if(n>MAX_SETPOINT_CNTS)
+          n=MAX_SETPOINT_CNTS;
+        if(n<-MAX_SETPOINT_CNTS)
+          n=-MAX_SETPOINT_CNTS;
+        writereg(3,((unsigned int)n) & PHSETPOINT_MASK);
+        snprintf(ans, maxlen, "%s: new setpoint is %d ns\n", OKS, n*8);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing setpoint specification\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
@@ -227,6 +324,11 @@ void printHelp(int filedes)
   sendback(filedes,"REGister? <reg>        : read content of register <reg>\n");
   sendback(filedes,"*IDN?                  : print firmware name and version\n");
   sendback(filedes,"*STB?                  : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
+  sendback(filedes,"SYNCHronizer {ON|OFF}  : turn synchronizer on or off\n");
+  sendback(filedes,"SYNCHronizer?          : query synchronizer state; answer is either ON or OFF\n");
+  sendback(filedes,"*RST                   : turn off synchronizer; equivalent to SYNCH OFF\n");
+  sendback(filedes,"PHSETPOINT_NS <value>  : set phase setpoint to <value> ns\n");
+  sendback(filedes,"PHSETPOINT_NS?         : query current phase setpoint, expressed in ns\n");
   }
 
 
@@ -261,6 +363,12 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseIDN(ans, maxlen, rw);
   else if(strcmp(p,"*STB")==0)
     parseSTB(ans, maxlen, rw);
+  if( (strcmp(p,"SYNCH")==0) || (strcmp(p,"SYNCHRONIZER")==0))
+    parseSYNCHRONIZER(ans, maxlen, rw);
+  else if(strcmp(p,"*RST")==0)
+    parseRST(ans, maxlen, rw);
+  else if(strcmp(p,"PHSETPOINT_NS")==0)
+    parsePHSETP(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
