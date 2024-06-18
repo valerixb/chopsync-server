@@ -2,37 +2,18 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 17 2024                   ***
+ ***  latest rev: jun 18 2024                   ***
  ***                                            ***
  **************************************************/ 
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-//#include <stdbool.h>
-
-#define PORT    8888
-#define MAXMSG  512
-
-#define READ  1
-#define WRITE 0
-
-#define ERRS "ERR"
-#define OKS  "OK"
-
-#define MAXREG 12
+#include "server.h"
 
 /***  protos  ***/
 
 void   upstring(char *s);
 void   trimstring(char* s);
+void   parseREG(char *ans, size_t maxlen, int rw);
+void   parseIDN(char *ans, size_t maxlen, int rw);
 void   parse(char *buf, char *ans, size_t maxlen);
 int    read_from_client(int filedes);
 int    main(int argc, char *const argv[]);
@@ -43,7 +24,7 @@ int    main(int argc, char *const argv[]);
 void upstring(char *s)
   {
   char *p;
-  for(p=s; p*; p++)
+  for(p=s; *p; p++)
     *p=toupper((unsigned char) *p);
   }
 
@@ -65,10 +46,10 @@ void trimstring(char* s)
   for(begin=s; begin <=end && isspace(*begin); begin++)
     ;
   
-  len=end-begin;
+  len=end-begin+1;
   // must use memcpy because I don't have proper 0-termination yet
   memcpy(wbuf, begin, len);
-  wbuf[len+1]=0;
+  wbuf[len]=0;
   // I can use strcpy as now I have proper 0-termination
   (void) strcpy(s, wbuf);
   return len;
@@ -77,72 +58,107 @@ void trimstring(char* s)
 
 //-------------------------------------------------------------------
 
+void parseREG(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  unsigned int reg, val;
+  
+  // next in line is register address [0..MAXREG]
+  p=strtok(NULL," ");
+  if(p!=NULL)
+    {
+    // try to read a hex value
+    n=sscanf(p,"0X%x",&reg);
+    // if failed, try to read a decimal value
+    if(n==0)
+      n=sscanf(p,"%u",&reg);
+    
+    if(n==0 || reg>MAXREG)
+      {
+      snprintf(ans, maxlen, "%s: no such register\n", ERRS);    
+      }
+    else
+      {
+      // we have a valid register address
+      if(rw==WRITE)
+        {
+        // next in line is the value to write into the register
+        p=strtok(NULL," ");
+        if(p!=NULL)
+          {
+          // try to read a hex value
+          n=sscanf(p,"0X%x",&val);
+          // if failed, try to read a decimal value
+          if(n==0)
+            n=sscanf(p,"%u",&val);
+          
+          if(n==0)
+            {
+            snprintf(ans, maxlen, "%s: invalid value to write into register 0x%X\n", ERRS, reg);
+            }
+          else
+            {
+            // WRITE REGISTER
+            snprintf(ans, maxlen, "%s: write 0x%08X into register 0x%X\n", OKS, val, reg);
+            }
+          }
+        else
+          snprintf(ans, maxlen, "%s: missing value to write into register\n", ERRS);
+        }
+      else
+        {
+        // READ REGISTER
+        snprintf(ans, maxlen, "%s: read register 0x%X\n", OKS, reg);
+        }
+      }
+    }
+  else
+    {
+    snprintf(ans, maxlen, "%s: missing register number\n", ERRS);
+    }
+  }
+
+//-------------------------------------------------------------------
+
+void parseIDN(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  unsigned int reg, val;
+
+  }
+
+
+//-------------------------------------------------------------------
+
 void parse(char *buf, char *ans, size_t maxlen)
   {
   char *p;
-  int rw, n;
-  unsigned int reg, val;
+  int rw;
 
   trimstring(buf);
   upstring(buf);
 
-  p=strtok(buf,'?');
+  // is this a READ or WRITE operation?
+  // note: cannot use strtok because it modifies the input string
+  p=strchr(buf,'?');
   if(p!=NULL)
     {
     rw=READ;
+    p=strtok(buf,"?");
     }
+  else
     {
     rw=WRITE;
-    p=strtok(buf,' ');
+    p=strtok(buf," ");
     }
 
-  if( (strcmp(p,"REG")=0) || (strcmp(p,"REGISTER")=0))
-    {
-    p=strtok(NULL,' ');
-    if(p!=NULL)
-      {
-      n=sscanf(p,"%x",&reg);
-      if(n==0 || reg>MAXREG)
-        {
-        snprintf(ans, maxlen, "%s: no such register\n", ERRS);    
-        }
-      else
-        {
-        if(rw==WRITE)
-          {
-          p=strtok(NULL,' ');
-          if(p!=NULL)
-            {
-            n=sscanf(p,"%x",&val);
-            if(n==0)
-              {
-              snprintf(ans, maxlen, "%s: invalid value to write into register\n", ERRS);
-              }
-            else
-              {
-              // WRITE REGISTER
-              snprintf(ans, maxlen, "%s: write 0x%08X into register 0x%X\n", OKS, val, reg);
-              }
-            }
-          else
-            snprintf(ans, maxlen, "%s: missing value to write into register\n", ERRS);
-          }
-        else
-          {
-          // READ REGISTER
-          snprintf(ans, maxlen, "%s: read register 0x%X\n", OKS, reg);
-          }
-        }
-      }
-    else
-      {
-      snprintf(ans, maxlen, "%s: missing register number\n", ERRS);
-      }
-    }
-  else if(strcmp(p,"*IDN")=0)
-    {
-    
-    }
+  // serve the right command
+  if( (strcmp(p,"REG")==0) || (strcmp(p,"REGISTER")==0))
+    parseREG(ans, maxlen, rw);
+  else if(strcmp(p,"*IDN")==0)
+    parseIDN(ans, maxlen, rw);
   else
     {
     snprintf(ans, maxlen, "%s: no such command\n", ERRS);
