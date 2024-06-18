@@ -169,15 +169,15 @@ void parseIDN(char *ans, size_t maxlen, int rw)
   {
   FILE *fd;
   char prod[MAXMSG+1], ver[MAXMSG+1];
-  int n;
+  char *s;
 
   // firmware name
   fd = fopen(PRODUCT_FNAME, "r");
   if(fd!=NULL)
     {
-    n=fscanf(fd,"%s",prod);
+    s=fgets(prod, MAXMSG, fd);
     fclose(fd);
-    if(n==0)
+    if(s==NULL)
       strcpy(prod,"Unknown Firmware");
     }
   else
@@ -187,15 +187,28 @@ void parseIDN(char *ans, size_t maxlen, int rw)
   fd = fopen(VERSION_FNAME, "r");
   if(fd!=NULL)
     {
-    n=fscanf(fd,"%s",ver);
+    s=fgets(ver, MAXMSG, fd);
     fclose(fd);
-    if(n==0)
+    if(s==NULL)
       strcpy(ver,"Unknown");
     }
   else
     strcpy(ver,"Unknown");
   
-  snprintf(ans, MAXMSG, "%s - version %s\n", prod, ver);
+  trimstring(prod);
+  trimstring(ver);
+  snprintf(ans, maxlen, "%s - version %s\n", prod, ver);
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseSTB(char *ans, size_t maxlen, int rw)
+  {
+   snprintf(ans, maxlen, 
+            "%s: 0x%03X is the combined status word\n", OKS, 
+            ((readreg(1)&0x00FF)<<8 | (readreg(0)&0x00FF))
+           );
   }
 
 
@@ -204,13 +217,16 @@ void parseIDN(char *ans, size_t maxlen, int rw)
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
+  sendback(filedes,"Server support multiple concurrent clients\n");
   sendback(filedes,"Server is case insensitive\n");
-  sendback(filedes,"numbers can be decimal or hex, with the 0x prefix\n");
-  sendback(filedes,"Server answers with OK or ERR, a colon and a descriptive message\n\n");
+  sendback(filedes,"Numbers can be decimal or hex, with the 0x prefix\n");
+  sendback(filedes,"Server answers with OK or ERR, a colon and a descriptive message\n");
+  sendback(filedes,"Send CTRL-D to close the connection\n\n");
   sendback(filedes,"Command list:\n\n");
   sendback(filedes,"REGister <reg> <value> : write <value> into register <reg>\n");
   sendback(filedes,"REGister? <reg>        : read content of register <reg>\n");
   sendback(filedes,"*IDN?                  : print firmware name and version\n");
+  sendback(filedes,"*STB?                  : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
   }
 
 
@@ -243,6 +259,8 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseREG(ans, maxlen, rw);
   else if(strcmp(p,"*IDN")==0)
     parseIDN(ans, maxlen, rw);
+  else if(strcmp(p,"*STB")==0)
+    parseSTB(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
