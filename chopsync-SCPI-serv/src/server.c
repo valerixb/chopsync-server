@@ -8,18 +8,61 @@
 
 #include "server.h"
 
+/***  globals  ***/
+uint32_t *regbank;
+
 /***  protos  ***/
 
-void   upstring(char *s);
-void   trimstring(char* s);
-void   parseREG(char *ans, size_t maxlen, int rw);
-void   parseIDN(char *ans, size_t maxlen, int rw);
-void   parse(char *buf, char *ans, size_t maxlen);
-int    read_from_client(int filedes);
-int    main(int argc, char *const argv[]);
+int          memorymap(void);
+void         writereg(unsigned int reg, unsigned int val);
+unsigned int readreg(unsigned int reg);
+void         upstring(char *s);
+void         trimstring(char* s);
+void         parseREG(char *ans, size_t maxlen, int rw);
+void         parseIDN(char *ans, size_t maxlen, int rw);
+void         printHelp(int filedes);
+void         parse(char *buf, char *ans, size_t maxlen, int filedes);
+int          read_from_client(int filedes);
+int          main(int argc, char *const argv[]);
 
 
 /***  implementation  ***/
+
+int memorymap(void)
+  {
+  int fd;
+  
+  if((fd = open("/dev/mem", O_RDWR | O_SYNC)) != -1)
+    {
+    regbank = (uint32_t *)mmap(NULL, REGBANK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, REGBANK_BASE);
+    if(regbank==MAP_FAILED)
+      return -1;
+    // file descriptor can be closed without invalidating the mapping
+    close(fd);
+    return 0;
+    }
+  else
+    return -1;
+  }
+
+
+//-------------------------------------------------------------------
+
+void writereg(unsigned int reg, unsigned int val)
+  {
+  regbank[reg]=val;
+  }
+
+
+//-------------------------------------------------------------------
+
+unsigned int readreg(unsigned int reg)
+  {
+  return regbank[reg];
+  }
+
+
+//-------------------------------------------------------------------
 
 void upstring(char *s)
   {
@@ -52,7 +95,6 @@ void trimstring(char* s)
   wbuf[len]=0;
   // I can use strcpy as now I have proper 0-termination
   (void) strcpy(s, wbuf);
-  return len;
   }
 
 
@@ -68,7 +110,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
   p=strtok(NULL," ");
   if(p!=NULL)
     {
-    // try to read a hex value
+    // try to read a hex value; remember the string is uppercase
     n=sscanf(p,"0X%x",&reg);
     // if failed, try to read a decimal value
     if(n==0)
@@ -87,7 +129,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
         p=strtok(NULL," ");
         if(p!=NULL)
           {
-          // try to read a hex value
+          // try to read a hex value; remember the string is uppercase
           n=sscanf(p,"0X%x",&val);
           // if failed, try to read a decimal value
           if(n==0)
@@ -100,6 +142,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
           else
             {
             // WRITE REGISTER
+            writereg(reg,val);
             snprintf(ans, maxlen, "%s: write 0x%08X into register 0x%X\n", OKS, val, reg);
             }
           }
@@ -109,7 +152,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
       else
         {
         // READ REGISTER
-        snprintf(ans, maxlen, "%s: read register 0x%X\n", OKS, reg);
+        snprintf(ans, maxlen, "%s: read register 0x%X: 0x%08X\n", OKS, reg, readreg(reg));
         }
       }
     }
@@ -123,16 +166,21 @@ void parseREG(char *ans, size_t maxlen, int rw)
 
 void parseIDN(char *ans, size_t maxlen, int rw)
   {
-  char *p;
-  int n;
-  unsigned int reg, val;
 
   }
 
 
 //-------------------------------------------------------------------
 
-void parse(char *buf, char *ans, size_t maxlen)
+void printHelp(int filedes)
+  {
+  
+  }
+
+
+//-------------------------------------------------------------------
+
+void parse(char *buf, char *ans, size_t maxlen, int filedes)
   {
   char *p;
   int rw;
@@ -159,6 +207,11 @@ void parse(char *buf, char *ans, size_t maxlen)
     parseREG(ans, maxlen, rw);
   else if(strcmp(p,"*IDN")==0)
     parseIDN(ans, maxlen, rw);
+  else if(strcmp(p,"HELP")==0)
+    {
+    printHelp(filedes);
+    *ans=0;
+    }
   else
     {
     snprintf(ans, maxlen, "%s: no such command\n", ERRS);
@@ -170,7 +223,6 @@ void parse(char *buf, char *ans, size_t maxlen)
 int read_from_client(int filedes)
   {
   char buffer[MAXMSG+1];    // "+1" to add zero-terminator
-  char echomsg[2*MAXMSG]="OK:";
   char answer[MAXMSG+1];
   int  nbytes;
   
@@ -191,7 +243,7 @@ int read_from_client(int filedes)
     // data read
     buffer[nbytes]=0;    // add string zero terminator
     fprintf(stderr, "Incoming msg: '%s'\n", buffer);
-    parse(buffer, answer, MAXMSG);
+    parse(buffer, answer, MAXMSG, filedes);
     nbytes = write(filedes, answer, strlen(answer));
     return 0;
     }
@@ -207,6 +259,13 @@ int main(int argc, char *const argv[])
   struct sockaddr_in clientname;
   size_t size;
   struct sockaddr_in name;
+
+  // map register bank into user space
+  if(memorymap()!=0)
+    {
+    fprintf(stderr,"Can't map Register Bank - aborted\n");
+    return -1;
+    }
 
   fprintf(stderr,"Starting server\n");
 

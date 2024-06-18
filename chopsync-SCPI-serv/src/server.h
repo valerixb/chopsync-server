@@ -10,8 +10,10 @@
 #define SERVER_H
 
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -20,6 +22,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 //#include <stdbool.h>
+#include <stdint.h>
+#include <sys/mman.h>
 
 #define PORT    8888
 #define MAXMSG  512
@@ -30,5 +34,7 @@
 #define OKS  "OK"
 #define MAXREG 12
 
+#define REGBANK_BASE 0xA0000000
+#define REGBANK_SIZE 256
 
 #endif
