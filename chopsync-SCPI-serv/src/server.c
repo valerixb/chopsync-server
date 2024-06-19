@@ -24,10 +24,17 @@ void         parseSYNCHRONIZER(char *ans, size_t maxlen, int rw);
 void         parseRST(char *ans, size_t maxlen, int rw);
 void         parsePHSETP(char *ans, size_t maxlen, int rw);
 void         parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum);
+void         parseUNWRAP(char *ans, size_t maxlen, int rw);
+void         parseUNWRES(char *ans, size_t maxlen, int rw);
 void         parseTRIGOUTPH(char *ans, size_t maxlen, int rw);
 void         parseUNWTHR(char *ans, size_t maxlen, int rw);
 void         parseSIGGENDFTW(char *ans, size_t maxlen, int rw);
 void         parseGAIN(char *ans, size_t maxlen, int rw);
+void         parseLOCK(char *ans, size_t maxlen, int rw, unsigned int mask);
+void         parsePHERR(char *ans, size_t maxlen, int rw);
+void         parseMECOSCMD(char *ans, size_t maxlen, int rw);
+void         parseFREQ(char *ans, size_t maxlen, int rw, int regnum);
+void         parseLOL(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);
@@ -360,6 +367,28 @@ void parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum)
 
 //-------------------------------------------------------------------
 
+// choosing regnum in the parameters lets you choose to read 
+// the bunchmarker or the chopper frequency
+
+void parseFREQ(char *ans, size_t maxlen, int rw, int regnum)
+  {
+  char *p;
+  int n;
+  
+  if(rw==READ)
+    {
+    // read frequency
+    n=(int)readreg(regnum);
+    snprintf(ans, maxlen, "%s: %d Hz\n", OKS, n);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+
+  }
+
+
+//-------------------------------------------------------------------
+
 void parseTRIGOUTPH(char *ans, size_t maxlen, int rw)
   {
   char *p;
@@ -385,7 +414,7 @@ void parseTRIGOUTPH(char *ans, size_t maxlen, int rw)
       else
         {
         // TRIGOUT phase must be in range [1..bunchmarker_prescaler]
-        presc=(int)(readreg(BUNCHMARKER) & PRESCALER_MASK);
+        presc=(int)(readreg(BUNCHMARKER_PSCALER_REG) & PRESCALER_MASK);
         if(n>presc)
           n=presc;
         if(n<1)
@@ -396,6 +425,90 @@ void parseTRIGOUTPH(char *ans, size_t maxlen, int rw)
       }
     else
       snprintf(ans, maxlen, "%s: missing TRIGOUT phase value\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseUNWRAP(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  
+  if(rw==READ)
+    {
+    // read unwrapper on/off state
+    if((readreg(1) & UNWRAPPER_MASK) != 0)
+      snprintf(ans, maxlen, "%s: ON\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    }
+  else
+    {
+    // turn unwrapper on/off
+    
+    // next in line is ON or OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"ON")==0)
+        {
+        writereg(1,readreg(1) | UNWRAPPER_MASK);
+        snprintf(ans, maxlen, "%s: Unwrapper is now ON\n", OKS);
+        }
+      else if(strcmp(p,"OFF")==0)
+        {
+        writereg(1,readreg(1) & ~UNWRAPPER_MASK);
+        snprintf(ans, maxlen, "%s: Unwrapper is now OFF\n", OKS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use ON/OFF with UNWRAPper command\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing ON/OFF option\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseUNWRES(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  
+  if(rw==READ)
+    {
+    // read unwrapper reset option on/off state
+    if((readreg(1) & UNWRESET_MASK) != 0)
+      snprintf(ans, maxlen, "%s: ON\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    }
+  else
+    {
+    // turn unwrapper reset option on/off
+    
+    // next in line is ON or OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"ON")==0)
+        {
+        writereg(1,readreg(1) | UNWRESET_MASK);
+        snprintf(ans, maxlen, "%s: Unwrapper reset option is now ON\n", OKS);
+        }
+      else if(strcmp(p,"OFF")==0)
+        {
+        writereg(1,readreg(1) & ~UNWRESET_MASK);
+        snprintf(ans, maxlen, "%s: Unwrapper reset option is now OFF\n", OKS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use ON/OFF with UNW_RES command\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing ON/OFF option\n", ERRS);
     }
 
   }
@@ -533,6 +646,106 @@ void parseGAIN(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+void parseMECOSCMD(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  
+  if(rw==READ)
+    {
+    // read current command to mecos; it's sfix_22.0
+    n=(int)(readreg(5) & MECOSCMD_MASK);
+    snprintf(ans, maxlen, "%s: %+d pulses\n", OKS, n);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parsePHERR(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  float x;
+  
+  if(rw==READ)
+    {
+    // read current phase error; it's sfix_24.7
+    n=(int)(readreg(6) & PHERR_MASK);
+    // convert the value to ns
+    // 1 count = 8 ns
+    // count value is fractional because filtered and decimated -> precision increases
+    x=n/POW_2_7*8.;
+    snprintf(ans, maxlen, "%s: %+f ns\n", OKS, x);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseLOCK(char *ans, size_t maxlen, int rw, unsigned int mask)
+  {
+  char *p;
+  
+  if(rw==READ)
+    {
+    // read lock status
+    if((readreg(0) & mask) != 0)
+      snprintf(ans, maxlen, "%s: ON\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseLOL(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  
+  if(rw==READ)
+    {
+    // read sticky lock-of-loss alarm
+    if((readreg(0) & STICKYLOL_MASK) != 0)
+      snprintf(ans, maxlen, "%s: ON\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    }
+  else
+    {
+    // reset sticky lock-of-loss alarm
+    
+    // next in line must be OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"OFF")==0)
+        {
+        writereg(1,readreg(1) | LOL_RESET_MASK);
+        snprintf(ans, maxlen, "%s: Sticky loss-of-lock alarm has been reset\n", OKS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use OFF to reset the sticky loss-of-lock alarm\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing 'OFF'\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
@@ -557,11 +770,24 @@ void printHelp(int filedes)
   sendback(filedes,"CHOPPER_PRESCALER?            : query the value of the chopper photodiode prescaler\n");
   sendback(filedes,"TRIGOUT_PH <value>            : set phase for TRIGOUT signal; range [1 to BUNCHMARKER_PRESCALE]\n");
   sendback(filedes,"TRIGOUT_PH?                   : query the value of the TRIGOUT signal phase\n");
+  sendback(filedes,"UNWRAPper {ON|OFF}            : [advanced - be careful] turn unwrapper on or off\n");
+  sendback(filedes,"UNWRAPper?                    : query unwrapper state; answer is either ON or OFF\n");
+  sendback(filedes,"UNW_RES {ON|OFF}              : [advanced - be careful] turn unwrapper reset option on or off\n");
+  sendback(filedes,"UNW_RES?                      : query unwrapper reset option; answer is either ON or OFF\n");
   sendback(filedes,"UNW_THR <value>               : [advanced - be careful] set threshold for unwrapper reset\n");
   sendback(filedes,"UNW_THR?                      : query the threshold for unwrapper reset\n");
   sendback(filedes,"SIGGEN_DF_HZ <value>          : [advanced - be careful] delta frequency for diagnostic bunch marker generator\n");
   sendback(filedes,"                                Frequency will be 3'123'437.5 + <value> Hz; <value> can be negative\n");
   sendback(filedes,"SIGGEN_DF_HZ?                 : query the diagnostic bunch marker generator delta frequency\n");
+  sendback(filedes,"FLOCK?                        : query frequency lock; answer is either ON or OFF; read only\n");
+  sendback(filedes,"PHLOCK?                       : query phase lock; answer is either ON or OFF; read only\n");
+  sendback(filedes,"PHERR?                        : query current phase error in ns; read only\n");
+  sendback(filedes,"MECOS_CMD?                    : query current inc/dec speed command from chopsync to MECOS; read only\n");
+  sendback(filedes,"                                answer is number of commanded speed steps; a positive number means accelerate\n");
+  sendback(filedes,"BUNCHFREQ?                    : query current bunch marker frequency in Hz; read only\n");
+  sendback(filedes,"CHOPFREQ?                     : query current chopper photodiode frequency in Hz; read only\n");
+  sendback(filedes,"STICKYLOL OFF                 : reset sticky loss-of-lock alarm; it can be set by hardware only\n");
+  sendback(filedes,"STICKYLOL?                    : query sticky loss-of-lock alarm; answer is either ON or OFF\n");
   sendback(filedes,"Gain <value>                  : [advanced - be careful] set loop gain (conservative=4; high performance=default=6)\n");
   sendback(filedes,"Gain?                         : query loop gain\n");
   }
@@ -605,17 +831,35 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
   else if(strcmp(p,"PHSETPOINT_NS")==0)
     parsePHSETP(ans, maxlen, rw);
   else if(strcmp(p,"BUNCHMARKER_PRESCALER")==0)
-    parsePRESCALER(ans, maxlen, rw, BUNCHMARKER);
+    parsePRESCALER(ans, maxlen, rw, BUNCHMARKER_PSCALER_REG);
   else if(strcmp(p,"CHOPPER_PRESCALER")==0)
-    parsePRESCALER(ans, maxlen, rw, CHOPPER);
+    parsePRESCALER(ans, maxlen, rw, CHOPPER_PSCALER_REG);
   else if(strcmp(p,"TRIGOUT_PH")==0)
     parseTRIGOUTPH(ans, maxlen, rw);
+  else if( (strcmp(p,"UNWRAP")==0) || (strcmp(p,"UNWRAPPER")==0))
+    parseUNWRAP(ans, maxlen, rw);
+  else if(strcmp(p,"UNW_RES")==0)
+    parseUNWRES(ans, maxlen, rw);
   else if(strcmp(p,"UNW_THR")==0)
     parseUNWTHR(ans, maxlen, rw);
   else if(strcmp(p,"SIGGEN_DF_HZ")==0)
     parseSIGGENDFTW(ans, maxlen, rw);
   else if( (strcmp(p,"G")==0) || (strcmp(p,"GAIN")==0))
     parseGAIN(ans, maxlen, rw);
+  else if(strcmp(p,"FLOCK")==0)
+    parseLOCK(ans, maxlen, rw, FREQUENCY);
+  else if(strcmp(p,"PHLOCK")==0)
+    parseLOCK(ans, maxlen, rw, PHASE);
+  else if(strcmp(p,"MECOS_CMD")==0)
+    parseMECOSCMD(ans, maxlen, rw);
+  else if(strcmp(p,"PHERR")==0)
+    parsePHERR(ans, maxlen, rw);
+  else if(strcmp(p,"BUNCHFREQ")==0)
+    parseFREQ(ans, maxlen, rw, BUNCHMARKER_FREQ_REG);
+  else if(strcmp(p,"CHOPFREQ")==0)
+    parseFREQ(ans, maxlen, rw, CHOPPER_FREQ_REG);
+  else if(strcmp(p,"STICKYLOL")==0)
+    parseLOL(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
