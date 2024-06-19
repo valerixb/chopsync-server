@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 18 2024                   ***
+ ***  latest rev: jun 19 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -23,6 +23,11 @@ void         parseIDN(char *ans, size_t maxlen, int rw);
 void         parseSYNCHRONIZER(char *ans, size_t maxlen, int rw);
 void         parseRST(char *ans, size_t maxlen, int rw);
 void         parsePHSETP(char *ans, size_t maxlen, int rw);
+void         parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum);
+void         parseTRIGOUTPH(char *ans, size_t maxlen, int rw);
+void         parseUNWTHR(char *ans, size_t maxlen, int rw);
+void         parseSIGGENDFTW(char *ans, size_t maxlen, int rw);
+void         parseGAIN(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);
@@ -311,6 +316,223 @@ void parsePHSETP(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+// choosing regnum in the parameters lets you choose to change 
+// the bunchmarker or the chopper prescaler
+
+void parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum)
+  {
+  char *p;
+  int n;
+  
+  if(rw==READ)
+    {
+    // read prescaler
+    n=(int)(readreg(regnum) & PRESCALER_MASK);
+    snprintf(ans, maxlen, "%s: %d\n", OKS, n);
+    }
+  else
+    {
+    // set new prescaler value
+    
+    // next in line is the desired scaler value
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      n=(int)strtol(p, NULL, 10);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid prescaler value\n", ERRS);
+      else
+        {
+        if(n>MAX_PRESCALER)
+          n=MAX_PRESCALER;
+        if(n<0)
+          n=0;
+        writereg(regnum,(unsigned int)n);
+        snprintf(ans, maxlen, "%s: new prescaler is %d\n", OKS, n);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing prescaler value\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseTRIGOUTPH(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n, presc;
+  
+  if(rw==READ)
+    {
+    // read TRIGOUT phase value
+    n=(int)(readreg(12) & TRIGOUT_MASK);
+    snprintf(ans, maxlen, "%s: %d\n", OKS, n);
+    }
+  else
+    {
+    // set new TRIGOUT phase
+    
+    // next in line is the desired value
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      n=(int)strtol(p, NULL, 10);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid value\n", ERRS);
+      else
+        {
+        // TRIGOUT phase must be in range [1..bunchmarker_prescaler]
+        presc=(int)(readreg(BUNCHMARKER) & PRESCALER_MASK);
+        if(n>presc)
+          n=presc;
+        if(n<1)
+          n=1;
+        writereg(12,((unsigned int)n) & TRIGOUT_MASK);
+        snprintf(ans, maxlen, "%s: new TRIGOUT phase is %d\n", OKS, n);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing TRIGOUT phase value\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseUNWTHR(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n, presc;
+  
+  if(rw==READ)
+    {
+    // read unwrapper threshold
+    n=(int)(readreg(2) & UNWTHR_MASK);
+    snprintf(ans, maxlen, "%s: %d\n", OKS, n);
+    }
+  else
+    {
+    // set new unwrapper threshold
+    
+    // next in line is the desired value
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      n=(int)strtol(p, NULL, 10);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid value\n", ERRS);
+      else
+        {
+        if(n>MAX_UNWTHR_CNTS)
+          n=MAX_UNWTHR_CNTS;
+        if(n<0)
+          n=0;
+        writereg(2,((unsigned int)n) & UNWTHR_MASK);
+        snprintf(ans, maxlen, "%s: new unwrapper reset threshold is %d\n", OKS, n);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing threshold value\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseSIGGENDFTW(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  float df;
+  
+  if(rw==READ)
+    {
+    // read deltaFTW of diagnostic bunchmarker generator
+    // scale is 1 Hz = 2199 counts
+    n=(int)readreg(4);
+    df=n/(2199.);
+    snprintf(ans, maxlen, "%s: %f\n", OKS, df);
+    }
+  else
+    {
+    // set new deltaFTW
+    
+    // next in line is the desired value
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      df=strtof(p, NULL);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid frequency\n", ERRS);
+      else
+        {
+        // convert to sfix_32.0
+        // scale is 1 Hz = 2199 counts
+        n=round(df*2119.);
+        // no coercing; we use 32 bit
+        writereg(4,(unsigned int)n);
+        snprintf(ans, maxlen, "%s: new frequency is 3'123'437.5 %+f Hz\n", OKS, n/(2199.));
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing frequency specification\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseGAIN(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int n;
+  float g;
+  
+  if(rw==READ)
+    {
+    // read gain and convert it from ufix_16.12
+    n=(int)readreg(11);
+    g=n/POW_2_12;
+    snprintf(ans, maxlen, "%s: %f\n", OKS, g);
+    }
+  else
+    {
+    // set new gain
+    
+    // next in line is the desired value
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      g=strtof(p, NULL);
+      if(errno!=0 && n==0)
+        snprintf(ans, maxlen, "%s: invalid gain\n", ERRS);
+      else
+        {
+        // convert to ufix_16.12
+        n=round(g*POW_2_12);
+        if(n>MAX_G)
+          n=MAX_G;
+        if(n<1)
+          n=1;
+        writereg(3,((unsigned int)n) & PHSETPOINT_MASK);
+        snprintf(ans, maxlen, "%s: new gain is %f\n", OKS, n/POW_2_12);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing gain specification\n", ERRS);
+    }
+
+  }
+
+
+//-------------------------------------------------------------------
+
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
@@ -320,15 +542,28 @@ void printHelp(int filedes)
   sendback(filedes,"Server answers with OK or ERR, a colon and a descriptive message\n");
   sendback(filedes,"Send CTRL-D to close the connection\n\n");
   sendback(filedes,"Command list:\n\n");
-  sendback(filedes,"REGister <reg> <value> : write <value> into register <reg>\n");
-  sendback(filedes,"REGister? <reg>        : read content of register <reg>\n");
-  sendback(filedes,"*IDN?                  : print firmware name and version\n");
-  sendback(filedes,"*STB?                  : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
-  sendback(filedes,"SYNCHronizer {ON|OFF}  : turn synchronizer on or off\n");
-  sendback(filedes,"SYNCHronizer?          : query synchronizer state; answer is either ON or OFF\n");
-  sendback(filedes,"*RST                   : turn off synchronizer; equivalent to SYNCH OFF\n");
-  sendback(filedes,"PHSETPOINT_NS <value>  : set phase setpoint to <value> ns\n");
-  sendback(filedes,"PHSETPOINT_NS?         : query current phase setpoint, expressed in ns\n");
+  sendback(filedes,"REGister <reg> <value>       : write <value> into register <reg>\n");
+  sendback(filedes,"REGister? <reg>              : read content of register <reg>\n");
+  sendback(filedes,"*IDN?                        : print firmware name and version\n");
+  sendback(filedes,"*STB?                        : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
+  sendback(filedes,"SYNCHronizer {ON|OFF}        : turn synchronizer on or off\n");
+  sendback(filedes,"SYNCHronizer?                : query synchronizer state; answer is either ON or OFF\n");
+  sendback(filedes,"*RST                         : turn off synchronizer; equivalent to SYNCH OFF\n");
+  sendback(filedes,"PHSETPOINT_NS <value>        : set phase setpoint to <value> ns\n");
+  sendback(filedes,"PHSETPOINT_NS?               : query current phase setpoint, expressed in ns\n");
+  sendback(filedes,"BUNCHMARKER_PRESCALE <value> : set prescaler for bunchmarker\n");
+  sendback(filedes,"BUNCHMARKER_PRESCALE?        : query the value of the bunchmarker prescaler\n");
+  sendback(filedes,"CHOPPER_PRESCALE <value>     : set prescaler for chopper photodiode\n");
+  sendback(filedes,"CHOPPER_PRESCALE?            : query the value of the chopper photodiode prescaler\n");
+  sendback(filedes,"TRIGOUT_PH <value>           : set phase for TRIGOUT signal; range [1 to BUNCHMARKER_PRESCALE]\n");
+  sendback(filedes,"TRIGOUT_PH?                  : query the value of the TRIGOUT signal phase\n");
+  sendback(filedes,"UNW_THR <value>              : [advanced - be careful] set threshold for unwrapper reset\n");
+  sendback(filedes,"UNW_THR?                     : query the threshold for unwrapper reset\n");
+  sendback(filedes,"SIGGEN_DF_HZ <value>         : [advanced - be careful] delta frequency for diagnostic bunch marker generator\n");
+  sendback(filedes,"                               Frequency will be 3'123'437.5 + <value> Hz; <value> can be negative\n");
+  sendback(filedes,"SIGGEN_DF_HZ?                : query the diagnostic bunch marker generator delta frequency\n");
+  sendback(filedes,"Gain <value>                 : [advanced - be careful] set loop gain (conservative=4; high performance=default=6)\n");
+  sendback(filedes,"Gain?                        : query loop gain\n");
   }
 
 
@@ -369,6 +604,18 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseRST(ans, maxlen, rw);
   else if(strcmp(p,"PHSETPOINT_NS")==0)
     parsePHSETP(ans, maxlen, rw);
+  else if(strcmp(p,"BUNCHMARKER_PRESCALE")==0)
+    parsePRESCALER(ans, maxlen, rw, BUNCHMARKER);
+  else if(strcmp(p,"CHOPPER_PRESCALE")==0)
+    parsePRESCALER(ans, maxlen, rw, CHOPPER);
+  else if(strcmp(p,"TRIGOUT_PH")==0)
+    parseTRIGOUTPH(ans, maxlen, rw);
+  else if(strcmp(p,"UNW_THR")==0)
+    parseUNWTHR(ans, maxlen, rw);
+  else if(strcmp(p,"SIGGEN_DF_HZ")==0)
+    parseSIGGENDFTW(ans, maxlen, rw);
+  if( (strcmp(p,"G")==0) || (strcmp(p,"GAIN")==0))
+    parseGAIN(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
