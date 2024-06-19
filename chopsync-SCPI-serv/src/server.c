@@ -345,8 +345,8 @@ void parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum)
         {
         if(n>MAX_PRESCALER)
           n=MAX_PRESCALER;
-        if(n<0)
-          n=0;
+        if(n<1)
+          n=1;
         writereg(regnum,(unsigned int)n);
         snprintf(ans, maxlen, "%s: new prescaler is %d\n", OKS, n);
         }
@@ -497,7 +497,7 @@ void parseGAIN(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read gain and convert it from ufix_16.12
-    n=(int)readreg(11);
+    n=(int)(readreg(11) & GAIN_MASK);
     g=n/POW_2_12;
     snprintf(ans, maxlen, "%s: %f\n", OKS, g);
     }
@@ -520,7 +520,7 @@ void parseGAIN(char *ans, size_t maxlen, int rw)
           n=MAX_G;
         if(n<1)
           n=1;
-        writereg(3,((unsigned int)n) & PHSETPOINT_MASK);
+        writereg(11,((unsigned int)n) & GAIN_MASK);
         snprintf(ans, maxlen, "%s: new gain is %f\n", OKS, n/POW_2_12);
         }
       }
@@ -542,28 +542,28 @@ void printHelp(int filedes)
   sendback(filedes,"Server answers with OK or ERR, a colon and a descriptive message\n");
   sendback(filedes,"Send CTRL-D to close the connection\n\n");
   sendback(filedes,"Command list:\n\n");
-  sendback(filedes,"REGister <reg> <value>       : write <value> into register <reg>\n");
-  sendback(filedes,"REGister? <reg>              : read content of register <reg>\n");
-  sendback(filedes,"*IDN?                        : print firmware name and version\n");
-  sendback(filedes,"*STB?                        : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
-  sendback(filedes,"SYNCHronizer {ON|OFF}        : turn synchronizer on or off\n");
-  sendback(filedes,"SYNCHronizer?                : query synchronizer state; answer is either ON or OFF\n");
-  sendback(filedes,"*RST                         : turn off synchronizer; equivalent to SYNCH OFF\n");
-  sendback(filedes,"PHSETPOINT_NS <value>        : set phase setpoint to <value> ns\n");
-  sendback(filedes,"PHSETPOINT_NS?               : query current phase setpoint, expressed in ns\n");
-  sendback(filedes,"BUNCHMARKER_PRESCALE <value> : set prescaler for bunchmarker\n");
-  sendback(filedes,"BUNCHMARKER_PRESCALE?        : query the value of the bunchmarker prescaler\n");
-  sendback(filedes,"CHOPPER_PRESCALE <value>     : set prescaler for chopper photodiode\n");
-  sendback(filedes,"CHOPPER_PRESCALE?            : query the value of the chopper photodiode prescaler\n");
-  sendback(filedes,"TRIGOUT_PH <value>           : set phase for TRIGOUT signal; range [1 to BUNCHMARKER_PRESCALE]\n");
-  sendback(filedes,"TRIGOUT_PH?                  : query the value of the TRIGOUT signal phase\n");
-  sendback(filedes,"UNW_THR <value>              : [advanced - be careful] set threshold for unwrapper reset\n");
-  sendback(filedes,"UNW_THR?                     : query the threshold for unwrapper reset\n");
-  sendback(filedes,"SIGGEN_DF_HZ <value>         : [advanced - be careful] delta frequency for diagnostic bunch marker generator\n");
-  sendback(filedes,"                               Frequency will be 3'123'437.5 + <value> Hz; <value> can be negative\n");
-  sendback(filedes,"SIGGEN_DF_HZ?                : query the diagnostic bunch marker generator delta frequency\n");
-  sendback(filedes,"Gain <value>                 : [advanced - be careful] set loop gain (conservative=4; high performance=default=6)\n");
-  sendback(filedes,"Gain?                        : query loop gain\n");
+  sendback(filedes,"REGister <reg> <value>        : write <value> into register <reg>\n");
+  sendback(filedes,"REGister? <reg>               : read content of register <reg>\n");
+  sendback(filedes,"*IDN?                         : print firmware name and version\n");
+  sendback(filedes,"*STB?                         : combined status word = lower 8 LSBs of reg#1 (<<8) + lower 8 LSBs of reg#0\n");
+  sendback(filedes,"SYNCHronizer {ON|OFF}         : turn synchronizer on or off\n");
+  sendback(filedes,"SYNCHronizer?                 : query synchronizer state; answer is either ON or OFF\n");
+  sendback(filedes,"*RST                          : turn off synchronizer; equivalent to SYNCH OFF\n");
+  sendback(filedes,"PHSETPOINT_NS <value>         : set phase setpoint to <value> ns\n");
+  sendback(filedes,"PHSETPOINT_NS?                : query current phase setpoint, expressed in ns\n");
+  sendback(filedes,"BUNCHMARKER_PRESCALER <value> : set prescaler for bunchmarker\n");
+  sendback(filedes,"BUNCHMARKER_PRESCALER?        : query the value of the bunchmarker prescaler\n");
+  sendback(filedes,"CHOPPER_PRESCALER <value>     : set prescaler for chopper photodiode\n");
+  sendback(filedes,"CHOPPER_PRESCALER?            : query the value of the chopper photodiode prescaler\n");
+  sendback(filedes,"TRIGOUT_PH <value>            : set phase for TRIGOUT signal; range [1 to BUNCHMARKER_PRESCALE]\n");
+  sendback(filedes,"TRIGOUT_PH?                   : query the value of the TRIGOUT signal phase\n");
+  sendback(filedes,"UNW_THR <value>               : [advanced - be careful] set threshold for unwrapper reset\n");
+  sendback(filedes,"UNW_THR?                      : query the threshold for unwrapper reset\n");
+  sendback(filedes,"SIGGEN_DF_HZ <value>          : [advanced - be careful] delta frequency for diagnostic bunch marker generator\n");
+  sendback(filedes,"                                Frequency will be 3'123'437.5 + <value> Hz; <value> can be negative\n");
+  sendback(filedes,"SIGGEN_DF_HZ?                 : query the diagnostic bunch marker generator delta frequency\n");
+  sendback(filedes,"Gain <value>                  : [advanced - be careful] set loop gain (conservative=4; high performance=default=6)\n");
+  sendback(filedes,"Gain?                         : query loop gain\n");
   }
 
 
@@ -598,15 +598,15 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseIDN(ans, maxlen, rw);
   else if(strcmp(p,"*STB")==0)
     parseSTB(ans, maxlen, rw);
-  if( (strcmp(p,"SYNCH")==0) || (strcmp(p,"SYNCHRONIZER")==0))
+  else if( (strcmp(p,"SYNCH")==0) || (strcmp(p,"SYNCHRONIZER")==0))
     parseSYNCHRONIZER(ans, maxlen, rw);
   else if(strcmp(p,"*RST")==0)
     parseRST(ans, maxlen, rw);
   else if(strcmp(p,"PHSETPOINT_NS")==0)
     parsePHSETP(ans, maxlen, rw);
-  else if(strcmp(p,"BUNCHMARKER_PRESCALE")==0)
+  else if(strcmp(p,"BUNCHMARKER_PRESCALER")==0)
     parsePRESCALER(ans, maxlen, rw, BUNCHMARKER);
-  else if(strcmp(p,"CHOPPER_PRESCALE")==0)
+  else if(strcmp(p,"CHOPPER_PRESCALER")==0)
     parsePRESCALER(ans, maxlen, rw, CHOPPER);
   else if(strcmp(p,"TRIGOUT_PH")==0)
     parseTRIGOUTPH(ans, maxlen, rw);
@@ -614,7 +614,7 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseUNWTHR(ans, maxlen, rw);
   else if(strcmp(p,"SIGGEN_DF_HZ")==0)
     parseSIGGENDFTW(ans, maxlen, rw);
-  if( (strcmp(p,"G")==0) || (strcmp(p,"GAIN")==0))
+  else if( (strcmp(p,"G")==0) || (strcmp(p,"GAIN")==0))
     parseGAIN(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
@@ -660,7 +660,7 @@ int read_from_client(int filedes)
     {
     // data read
     buffer[nbytes]=0;    // add string zero terminator
-    fprintf(stderr, "Incoming msg: '%s'\n", buffer);
+    //fprintf(stderr, "Incoming msg: '%s'\n", buffer);
     parse(buffer, answer, MAXMSG, filedes);
     sendback(filedes, answer);
     return 0;
@@ -725,7 +725,7 @@ int main(int argc, char *const argv[])
   while(1)
     {
     // block until input arrives on one or more active sockets
-    fprintf(stderr,"Listening\n");
+    //fprintf(stderr,"Listening\n");
     read_fd_set = active_fd_set;
     nready=select(maxfd+1, &read_fd_set, NULL, NULL, NULL);
     if(nready<0)
@@ -766,7 +766,7 @@ int main(int argc, char *const argv[])
           else
           {
           // data arriving on an already-connected socket
-          fprintf(stderr,"Incoming data\n");
+          //fprintf(stderr,"Incoming data\n");
           if(read_from_client(i) < 0)
             {
             fprintf(stderr,"Closing connection\n");
