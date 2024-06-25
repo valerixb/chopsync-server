@@ -19,9 +19,10 @@ unsigned int readreg(unsigned int reg);
 void         upstring(char *s);
 void         trimstring(char* s);
 void         parseREG(char *ans, size_t maxlen, int rw);
-void         parseIDN(char *ans, size_t maxlen, int rw);
+void         parseIDN(char *ans, size_t maxlen);
+void         parseSTB(char *ans, size_t maxlen);
 void         parseSYNCHRONIZER(char *ans, size_t maxlen, int rw);
-void         parseRST(char *ans, size_t maxlen, int rw);
+void         parseRST(char *ans, size_t maxlen);
 void         parsePHSETP(char *ans, size_t maxlen, int rw);
 void         parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum);
 void         parseUNWRAP(char *ans, size_t maxlen, int rw);
@@ -39,7 +40,8 @@ void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);
 int          read_from_client(int filedes);
-int          main(int argc, char *const argv[]);
+//int          main(int argc, char *const argv[]);
+int          main(void);
 
 
 /***  implementation  ***/
@@ -181,7 +183,7 @@ void parseREG(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
-void parseIDN(char *ans, size_t maxlen, int rw)
+void parseIDN(char *ans, size_t maxlen)
   {
   FILE *fd;
   char prod[MAXMSG+1], ver[MAXMSG+1];
@@ -219,7 +221,7 @@ void parseIDN(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
-void parseSTB(char *ans, size_t maxlen, int rw)
+void parseSTB(char *ans, size_t maxlen)
   {
    snprintf(ans, maxlen, 
             "%s: 0x%03X is the combined status word\n", OKS, 
@@ -272,7 +274,7 @@ void parseSYNCHRONIZER(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
-void parseRST(char *ans, size_t maxlen, int rw)
+void parseRST(char *ans, size_t maxlen)
   {
   writereg(1,readreg(1) | SYNCH_RESET_MASK);
   snprintf(ans, maxlen, "%s: SYNCHRONIZER is now OFF\n", OKS);        
@@ -374,7 +376,6 @@ void parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum)
 
 void parseFREQ(char *ans, size_t maxlen, int rw, int regnum)
   {
-  char *p;
   int n;
   
   if(rw==READ)
@@ -521,7 +522,7 @@ void parseUNWRES(char *ans, size_t maxlen, int rw)
 void parseUNWTHR(char *ans, size_t maxlen, int rw)
   {
   char *p;
-  int n, presc;
+  int n;
   
   if(rw==READ)
     {
@@ -581,8 +582,9 @@ void parseSIGGENDFTW(char *ans, size_t maxlen, int rw)
     p=strtok(NULL," ");
     if(p!=NULL)
       {
+      errno=0;  // to distinguish success/failure after call
       df=strtof(p, NULL);
-      if(errno!=0 && n==0)
+      if(errno!=0)
         snprintf(ans, maxlen, "%s: invalid frequency\n", ERRS);
       else
         {
@@ -624,8 +626,9 @@ void parseGAIN(char *ans, size_t maxlen, int rw)
     p=strtok(NULL," ");
     if(p!=NULL)
       {
+      errno=0;  // to distinguish success/failure after call
       g=strtof(p, NULL);
-      if(errno!=0 && n==0)
+      if(errno!=0)
         snprintf(ans, maxlen, "%s: invalid gain\n", ERRS);
       else
         {
@@ -650,7 +653,6 @@ void parseGAIN(char *ans, size_t maxlen, int rw)
 
 void parseMECOSCMD(char *ans, size_t maxlen, int rw)
   {
-  char *p;
   int n;
   
   if(rw==READ)
@@ -671,7 +673,6 @@ void parseMECOSCMD(char *ans, size_t maxlen, int rw)
 
 void parsePHERR(char *ans, size_t maxlen, int rw)
   {
-  char *p;
   int n;
   float x;
   
@@ -697,8 +698,6 @@ void parsePHERR(char *ans, size_t maxlen, int rw)
 
 void parseLOCK(char *ans, size_t maxlen, int rw, unsigned int mask)
   {
-  char *p;
-  
   if(rw==READ)
     {
     // read lock status
@@ -827,13 +826,13 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
   if( (strcmp(p,"REG")==0) || (strcmp(p,"REGISTER")==0))
     parseREG(ans, maxlen, rw);
   else if(strcmp(p,"*IDN")==0)
-    parseIDN(ans, maxlen, rw);
+    parseIDN(ans, maxlen);
   else if(strcmp(p,"*STB")==0)
-    parseSTB(ans, maxlen, rw);
+    parseSTB(ans, maxlen);
   else if( (strcmp(p,"SYNCH")==0) || (strcmp(p,"SYNCHRONIZER")==0))
     parseSYNCHRONIZER(ans, maxlen, rw);
   else if(strcmp(p,"*RST")==0)
-    parseRST(ans, maxlen, rw);
+    parseRST(ans, maxlen);
   else if(strcmp(p,"PHSETPOINT_NS")==0)
     parsePHSETP(ans, maxlen, rw);
   else if(strcmp(p,"BUNCHMARKER_PRESCALER")==0)
@@ -920,7 +919,8 @@ int read_from_client(int filedes)
 
 //-------------------------------------------------------------------
 
-int main(int argc, char *const argv[])
+//int main(int argc, char *const argv[])
+int main(void)
   {
   int sock, maxfd, opt = 1, i, nready;
   fd_set active_fd_set, read_fd_set;
@@ -997,7 +997,7 @@ int main(int argc, char *const argv[])
           size = sizeof(clientname);
           newfd = accept(sock,
                         (struct sockaddr *) &clientname,
-                        &size);
+                        (socklen_t * restrict) &size);
           if(newfd < 0)
             {
             perror("accept");
