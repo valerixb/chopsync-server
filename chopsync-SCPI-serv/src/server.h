@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 19 2024                   ***
+ ***  latest rev: jun 25 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -53,6 +53,7 @@
 
 #define MAX_SETPOINT_CNTS 65535
 #define PHSETPOINT_MASK 0x0001FFFF
+#define PHSETPOINT_SIGN 0x00010000
 #define PRESCALER_MASK 0x000003FF
 #define MAX_PRESCALER 1024
 
@@ -68,8 +69,10 @@
 #define MAX_UNWTHR_CNTS 65535
 
 #define MECOSCMD_MASK 0x003FFFFF
+#define MECOSCMD_SIGN 0x00200000
 
 #define PHERR_MASK 0x00FFFFFF
+#define PHERR_SIGN 0x00800000
 
 #define POW_2_12 4096.
 #define POW_2_7 128.

@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 19 2024                   ***
+ ***  latest rev: jun 25 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -289,7 +289,9 @@ void parsePHSETP(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read phase setpoint and convert it to ns
-    n=(int)readreg(3);
+    n=(int)(readreg(3) & PHSETPOINT_MASK);
+    // sign extension
+    n=(n ^ PHSETPOINT_SIGN)-PHSETPOINT_SIGN;
     snprintf(ans, maxlen, "%s: %d ns\n", OKS, n*8);
     }
   else
@@ -655,6 +657,8 @@ void parseMECOSCMD(char *ans, size_t maxlen, int rw)
     {
     // read current command to mecos; it's sfix_22.0
     n=(int)(readreg(5) & MECOSCMD_MASK);
+    // sign extension
+    n=(n ^ MECOSCMD_SIGN)-MECOSCMD_SIGN;
     snprintf(ans, maxlen, "%s: %+d pulses\n", OKS, n);
     }
   else
@@ -675,6 +679,8 @@ void parsePHERR(char *ans, size_t maxlen, int rw)
     {
     // read current phase error; it's sfix_24.7
     n=(int)(readreg(6) & PHERR_MASK);
+    // sign extension
+    n=(n ^ PHERR_SIGN)-PHERR_SIGN;
     // convert the value to ns
     // 1 count = 8 ns
     // count value is fractional because filtered and decimated -> precision increases
