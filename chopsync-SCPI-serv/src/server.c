@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: jun 25 2024                   ***
+ ***  latest rev: aug  6 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -10,6 +10,7 @@
 
 /***  globals  ***/
 uint32_t *regbank;
+int      can_present;
 
 /***  implementation  ***/
 
@@ -938,6 +939,13 @@ int main(void)
   FD_SET(sock, &active_fd_set);
 
   maxfd = sock;
+
+  // open CAN interface to talk to MECOS
+  // register success into global "can_present"
+  // if it fails, we proceed anyway, without CAN support
+  can_present=open_can();
+  if(can_present!=0)
+    perror("CAN unavailable; continuing anyway");
 
   while(1)
     {
