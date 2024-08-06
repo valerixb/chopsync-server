@@ -11,39 +11,6 @@
 /***  globals  ***/
 uint32_t *regbank;
 
-/***  protos  ***/
-
-int          memorymap(void);
-void         writereg(unsigned int reg, unsigned int val);
-unsigned int readreg(unsigned int reg);
-void         upstring(char *s);
-void         trimstring(char* s);
-void         parseREG(char *ans, size_t maxlen, int rw);
-void         parseIDN(char *ans, size_t maxlen);
-void         parseSTB(char *ans, size_t maxlen);
-void         parseSYNCHRONIZER(char *ans, size_t maxlen, int rw);
-void         parseRST(char *ans, size_t maxlen);
-void         parsePHSETP(char *ans, size_t maxlen, int rw);
-void         parsePRESCALER(char *ans, size_t maxlen, int rw, int regnum);
-void         parseUNWRAP(char *ans, size_t maxlen, int rw);
-void         parseUNWRES(char *ans, size_t maxlen, int rw);
-void         parseTRIGOUTPH(char *ans, size_t maxlen, int rw);
-void         parseUNWTHR(char *ans, size_t maxlen, int rw);
-void         parseSIGGENDFTW(char *ans, size_t maxlen, int rw);
-void         parseGAIN(char *ans, size_t maxlen, int rw);
-void         parseLOCK(char *ans, size_t maxlen, int rw, unsigned int mask);
-void         parsePHERR(char *ans, size_t maxlen, int rw);
-void         parseMECOSCMD(char *ans, size_t maxlen, int rw);
-void         parseFREQ(char *ans, size_t maxlen, int rw, int regnum);
-void         parseLOL(char *ans, size_t maxlen, int rw);
-void         printHelp(int filedes);
-void         parse(char *buf, char *ans, size_t maxlen, int filedes);
-void         sendback(int filedes, char *s);
-int          read_from_client(int filedes);
-//int          main(int argc, char *const argv[]);
-int          main(void);
-
-
 /***  implementation  ***/
 
 int memorymap(void)
