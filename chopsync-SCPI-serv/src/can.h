@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync CAN interface to MECOS           ***
  ***                                            ***
- ***  latest rev: aug  6 2024                   ***
+ ***  latest rev: aug  8 2024                   ***
  ***                                            ***
  **************************************************/ 
 // code derived from inno-maker USB-CAN interface sample code:
@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -43,5 +44,11 @@ int can_wait_answer(struct can_frame *match_frame, unsigned long int *response);
 int can_hz_setpoint_write(unsigned long int setpoint_hz);
 int can_hz_setpoint_read(unsigned long int *setpoint_hz_ptr);
 int can_hz_actual_read(unsigned long int *speed_hz_ptr);
+int can_liftup_state_read(bool *lifted);
+int can_liftup_state_write(bool lifted);
+int can_general_fault_read(unsigned long int *fault_ptr);
+int can_rotation_state_read(bool *rotating);
+int can_rotation_state_write(bool rotating);
+int can_ext_ctl_enabled_read(bool *enabled);
 
 #endif

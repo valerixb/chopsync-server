@@ -21,7 +21,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-//#include <stdbool.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -109,6 +109,10 @@ void         parseFREQ(char *ans, size_t maxlen, int rw, int regnum);
 void         parseLOL(char *ans, size_t maxlen, int rw);
 void         parseMECOS_HZ_SETP(char *ans, size_t maxlen, int rw);
 void         parseMECOS_HZ_ACT(char *ans, size_t maxlen, int rw);
+void         parseMECOS_LIFTUP(char *ans, size_t maxlen, int rw);
+void         parseMECOS_ROTATION(char *ans, size_t maxlen, int rw);
+void         parseMECOS_FAULT(char *ans, size_t maxlen, int rw);
+void         parseMECOS_STABLE(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);

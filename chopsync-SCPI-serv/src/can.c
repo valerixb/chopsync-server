@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync CAN interface to MECOS           ***
  ***                                            ***
- ***  latest rev: aug  6 2024                   ***
+ ***  latest rev: aug  8 2024                   ***
  ***                                            ***
  **************************************************/ 
 // code derived from inno-maker USB-CAN interface sample code:
@@ -257,3 +257,79 @@ int can_hz_actual_read(unsigned long int *speed_hz_ptr)
   return(can_read_register(0x20, 0x01, 0x00, speed_hz_ptr));
   }
 
+
+//-------------------------------------------------------------------
+
+int can_liftup_state_read(bool *lifted)
+  {
+  unsigned long val;
+  int ret;
+
+  ret=can_read_register(0x20, 0x0C, 0x00, &val);
+  if(ret==0)
+    *lifted = (val!=0);
+  
+  return ret;
+  }
+
+
+//-------------------------------------------------------------------
+
+int can_liftup_state_write(bool lifted)
+  {
+  // different CAN registers are used to lift up or down
+  if(lifted)
+    return(can_write_register(0x20, 0x11, 0x00, 1UL));
+  else
+    return(can_write_register(0x20, 0x12, 0x00, 1UL));
+  }
+
+
+//-------------------------------------------------------------------
+
+int can_general_fault_read(unsigned long int *fault_ptr)
+  {
+  return(can_read_register(0x20, 0x87, 0x00, fault_ptr));
+  }
+
+
+//-------------------------------------------------------------------
+
+int can_rotation_state_read(bool *rotating)
+  {
+  unsigned long val;
+  int ret;
+
+  ret=can_read_register(0x20, 0x80, 0x00, &val);
+  if(ret==0)
+    *rotating = (val!=0);
+  
+  return ret;
+  }
+
+
+//-------------------------------------------------------------------
+
+int can_rotation_state_write(bool rotating)
+  {
+  // different CAN registers are used to start or stop rotation
+  if(rotating)
+    return(can_write_register(0x20, 0x0F, 0x00, 1UL));
+  else
+    return(can_write_register(0x20, 0x10, 0x00, 1UL));
+  }
+
+
+//-------------------------------------------------------------------
+
+int can_ext_ctl_enabled_read(bool *enabled)
+  {
+  unsigned long val;
+  int ret;
+  // CHANGE ME!!!!! we need the right register address from MECOS
+  ret=can_read_register(0x20, 0x25, 0x00, &val);
+  if(ret==0)
+    *enabled = (val!=0);
+  
+  return ret;
+  }

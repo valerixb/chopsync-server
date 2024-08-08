@@ -207,10 +207,7 @@ void parseSYNCHRONIZER(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read synchronizer on/off state
-    if((readreg(1) & SYNCH_RESET_MASK) == 0)
-      snprintf(ans, maxlen, "%s: ON\n", OKS);
-    else
-      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, ((readreg(1) & SYNCH_RESET_MASK) == 0)?"ON":"OFF");
     }
   else
     {
@@ -410,10 +407,7 @@ void parseUNWRAP(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read unwrapper on/off state
-    if((readreg(1) & UNWRAPPER_MASK) != 0)
-      snprintf(ans, maxlen, "%s: ON\n", OKS);
-    else
-      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, ((readreg(1) & UNWRAPPER_MASK) != 0)?"ON":"OFF");
     }
   else
     {
@@ -452,10 +446,7 @@ void parseUNWRES(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read unwrapper reset option on/off state
-    if((readreg(1) & UNWRESET_MASK) != 0)
-      snprintf(ans, maxlen, "%s: ON\n", OKS);
-    else
-      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, ((readreg(1) & UNWRESET_MASK) != 0)?"ON":"OFF");
     }
   else
     {
@@ -669,10 +660,7 @@ void parseLOCK(char *ans, size_t maxlen, int rw, unsigned int mask)
   if(rw==READ)
     {
     // read lock status
-    if((readreg(0) & mask) != 0)
-      snprintf(ans, maxlen, "%s: ON\n", OKS);
-    else
-      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, ((readreg(0) & mask) != 0)?"ON":"OFF");
     }
   else
     snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
@@ -689,10 +677,7 @@ void parseLOL(char *ans, size_t maxlen, int rw)
   if(rw==READ)
     {
     // read sticky lock-of-loss alarm
-    if((readreg(0) & STICKYLOL_MASK) != 0)
-      snprintf(ans, maxlen, "%s: ON\n", OKS);
-    else
-      snprintf(ans, maxlen, "%s: OFF\n", OKS);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, ((readreg(0) & STICKYLOL_MASK) != 0)?"ON":"OFF");
     }
   else
     {
@@ -785,6 +770,144 @@ void parseMECOS_HZ_ACT(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+void parseMECOS_LIFTUP(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int ret;
+  bool lifted;
+  
+  if(rw==READ)
+    {
+    // read whether MECOS AMB is lifted or not 
+    ret=can_liftup_state_read(&lifted);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %s\n", OKS, lifted?"ON":"OFF");
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading liftup state\n", ERRS);
+    }
+  else
+    {
+    // next in line is ON or OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"ON")==0)
+        {
+        ret=can_liftup_state_write(true);
+        if(ret==0)
+          snprintf(ans, maxlen, "%s: MECOS AMB lifted UP\n", OKS);
+        else
+          snprintf(ans, maxlen, "%s: CAN error writing liftup state\n", ERRS);
+        }
+      else if(strcmp(p,"OFF")==0)
+        {
+        ret=can_liftup_state_write(false);
+        if(ret==0)
+          snprintf(ans, maxlen, "%s: MECOS AMB lifted DOWN\n", OKS);
+        else
+          snprintf(ans, maxlen, "%s: CAN error writing liftup state\n", ERRS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use ON/OFF with MECOS:LIFTUP command\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing ON/OFF option\n", ERRS);
+    }
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseMECOS_ROTATION(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int ret;
+  bool rotating;
+  
+  if(rw==READ)
+    {
+    // read whether MECOS AMB is rotating or not 
+    ret=can_rotation_state_read(&rotating);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %s\n", OKS, rotating?"ON":"OFF");
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading rotating state\n", ERRS);
+    }
+  else
+    {
+    // next in line is ON or OFF
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      if(strcmp(p,"ON")==0)
+        {
+        ret=can_rotation_state_write(true);
+        if(ret==0)
+          snprintf(ans, maxlen, "%s: MECOS AMB rotation ON\n", OKS);
+        else
+          snprintf(ans, maxlen, "%s: CAN error writing rotation state\n", ERRS);
+        }
+      else if(strcmp(p,"OFF")==0)
+        {
+        ret=can_rotation_state_write(false);
+        if(ret==0)
+          snprintf(ans, maxlen, "%s: MECOS AMB rotation OFF\n", OKS);
+        else
+          snprintf(ans, maxlen, "%s: CAN error writing rotation state\n", ERRS);
+        }
+      else
+        snprintf(ans, maxlen, "%s: use ON/OFF with MECOS:ROTATION command\n", ERRS);
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing ON/OFF option\n", ERRS);
+    }
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseMECOS_FAULT(char *ans, size_t maxlen, int rw)
+  {
+  int ret;
+  unsigned long errcode;
+  
+  if(rw==READ)
+    {
+    // read general fault register from MECOS
+    ret=can_general_fault_read(&errcode);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %s\n", OKS, (errcode!=0UL)?"ON":"OFF");
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading MECOS fault register\n", ERRS);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseMECOS_STABLE(char *ans, size_t maxlen, int rw)
+  {
+  int ret;
+  bool enabled;
+  
+  if(rw==READ)
+    {
+    // ask MECOS whether external control is enabled
+    ret=can_ext_ctl_enabled_read(&enabled);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %s\n", OKS, enabled?"ON":"OFF");
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading MECOS stable state (=ext control enable)\n", ERRS);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+  }
+
+
+//-------------------------------------------------------------------
+
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
@@ -832,6 +955,16 @@ void printHelp(int filedes)
   sendback(filedes,"MECOS:HZ_SETPoint <value>     : command <value> Hz as chopper rotation frequency to MECOS AMB; must be <= 1000 Hz\n");
   sendback(filedes,"MECOS:HZ_SETPoint?            : read current commanded rotation frequency of MECOS AMB (Hz)\n");
   sendback(filedes,"MECOS:HZ_ACTual?              : read actual rotation frequency of MECOS AMB (Hz)\n");
+  sendback(filedes,"MECOS:LIFTUP {ON|OFF}         : lift up or down chopper active magnetic bearing (AMB);\n");
+  sendback(filedes,"                                CAUTION! NEVER lift down if the chopper is ROTATING!\n");
+  sendback(filedes,"MECOS:LIFTUP?                 : query chopper active magnetic bearing (AMB) lift state;\n");
+  sendback(filedes,"                                returns ON (=lifted up) or OFF (=lifted down)\n");
+  sendback(filedes,"MECOS:ROTation {ON|OFF}       : starts/stops chopper rotation\n");
+  sendback(filedes,"MECOS:ROTation?               : query chopper rotation state\n");
+  sendback(filedes,"MECOS:FAULT?                  : returns ON in case of any faults in MECOS AMB; OFF for no faults \n");
+  sendback(filedes,"MECOS:STABLE?                 : returns ON if MECOS AMB rotation is stable and external control\n");
+  sendback(filedes,"                                by the chopper synchronizer is possible; OFF means that AMB speed is not stable yet,\n");
+  sendback(filedes,"                                so it is not possible to engage the chopper synchronizer\n");
   }
 
 
@@ -906,6 +1039,14 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseMECOS_HZ_SETP(ans, maxlen, rw);
   else if( (strcmp(p,"MECOS:HZ_ACT")==0) || (strcmp(p,"MECOS:HZ_ACTUAL")==0))
     parseMECOS_HZ_ACT(ans, maxlen, rw);
+  else if(strcmp(p,"MECOS:LIFTUP")==0)
+    parseMECOS_LIFTUP(ans, maxlen, rw);
+  else if( (strcmp(p,"MECOS:ROT")==0) || (strcmp(p,"MECOS:ROTATION")==0))
+    parseMECOS_ROTATION(ans, maxlen, rw);
+  else if(strcmp(p,"MECOS:FAULT")==0)
+    parseMECOS_FAULT(ans, maxlen, rw);
+  else if(strcmp(p,"MECOS:STABLE")==0)
+    parseMECOS_STABLE(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
