@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: aug  6 2024                   ***
+ ***  latest rev: aug  8 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -79,6 +79,9 @@
 #define POW_2_12 4096.
 #define POW_2_7 128.
 
+#define MECOS_MAX_SPEED    1000
+
+
 /***  protos  ***/
 
 int          memorymap(void);
@@ -104,6 +107,8 @@ void         parsePHERR(char *ans, size_t maxlen, int rw);
 void         parseMECOSCMD(char *ans, size_t maxlen, int rw);
 void         parseFREQ(char *ans, size_t maxlen, int rw, int regnum);
 void         parseLOL(char *ans, size_t maxlen, int rw);
+void         parseMECOS_HZ_SETP(char *ans, size_t maxlen, int rw);
+void         parseMECOS_HZ_ACT(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
 void         sendback(int filedes, char *s);

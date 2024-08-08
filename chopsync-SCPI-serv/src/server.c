@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: aug  6 2024                   ***
+ ***  latest rev: aug  8 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -719,6 +719,72 @@ void parseLOL(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+void parseMECOS_HZ_SETP(char *ans, size_t maxlen, int rw)
+  {
+  char *p;
+  int ret;
+  long vsetpoint;
+  
+  if(rw==READ)
+    {
+    // read speed setpoint from MECOS AMB
+    ret=can_hz_setpoint_read((unsigned long *)&vsetpoint);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %ld Hz\n", OKS, vsetpoint);
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading Hz Setpoint\n", ERRS);
+    }
+  else
+    {
+    // write speed setpoint to MECOS AMB
+
+    // next in line is the desired speed setpoint
+    p=strtok(NULL," ");
+    if(p!=NULL)
+      {
+      errno=0;  // to distinguish success/failure after call
+      vsetpoint=strtol(p, NULL, 10);
+      if(errno!=0)
+        snprintf(ans, maxlen, "%s: invalid MECOS Hz setpoint value\n", ERRS);
+      else
+        {
+        vsetpoint=(vsetpoint<=MECOS_MAX_SPEED)? vsetpoint : MECOS_MAX_SPEED;
+        ret=can_hz_setpoint_write((unsigned long)vsetpoint);
+      if(ret==0)
+        snprintf(ans, maxlen, "%s: new MECOS Hz setpoint is %ld Hz\n", OKS, vsetpoint);
+      else
+        snprintf(ans, maxlen, "%s: CAN error writing Hz Setpoint\n", ERRS);
+        }
+      }
+    else
+      snprintf(ans, maxlen, "%s: missing MECOS Hz setpoint specification\n", ERRS);
+    }
+  }
+
+
+//-------------------------------------------------------------------
+
+void parseMECOS_HZ_ACT(char *ans, size_t maxlen, int rw)
+  {
+  int ret;
+  long vact;
+  
+  if(rw==READ)
+    {
+    // read actual speed from MECOS AMB
+    ret=can_hz_actual_read((unsigned long *)&vact);
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: %ld Hz\n", OKS, vact);
+    else
+      snprintf(ans, maxlen, "%s: CAN error reading actual speed\n", ERRS);
+    }
+  else
+    snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);
+  }
+
+
+//-------------------------------------------------------------------
+
 void printHelp(int filedes)
   {
   sendback(filedes,"Chopsync SCPI server commands\n\n");
@@ -763,6 +829,9 @@ void printHelp(int filedes)
   sendback(filedes,"STICKYLOL?                    : query sticky loss-of-lock alarm; answer is either ON or OFF\n");
   sendback(filedes,"Gain <value>                  : [advanced - be careful] set loop gain (conservative=4; high performance=default=6)\n");
   sendback(filedes,"Gain?                         : query loop gain\n");
+  sendback(filedes,"MECOS:HZ_SETPoint <value>     : command <value> Hz as chopper rotation frequency to MECOS AMB; must be <= 1000 Hz\n");
+  sendback(filedes,"MECOS:HZ_SETPoint?            : read current commanded rotation frequency of MECOS AMB (Hz)\n");
+  sendback(filedes,"MECOS:HZ_ACTual?              : read actual rotation frequency of MECOS AMB (Hz)\n");
   }
 
 
@@ -833,6 +902,10 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseFREQ(ans, maxlen, rw, CHOPPER_FREQ_REG);
   else if(strcmp(p,"STICKYLOL")==0)
     parseLOL(ans, maxlen, rw);
+  else if( (strcmp(p,"MECOS:HZ_SETP")==0) || (strcmp(p,"MECOS:HZ_SETPOINT")==0))
+    parseMECOS_HZ_SETP(ans, maxlen, rw);
+  else if( (strcmp(p,"MECOS:HZ_ACT")==0) || (strcmp(p,"MECOS:HZ_ACTUAL")==0))
+    parseMECOS_HZ_ACT(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)
     {
     printHelp(filedes);
