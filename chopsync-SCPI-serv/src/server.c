@@ -775,6 +775,7 @@ void parseMECOS_LIFTUP(char *ans, size_t maxlen, int rw)
   char *p;
   int ret;
   bool lifted;
+  long vact;
   
   if(rw==READ)
     {
@@ -801,11 +802,21 @@ void parseMECOS_LIFTUP(char *ans, size_t maxlen, int rw)
         }
       else if(strcmp(p,"OFF")==0)
         {
-        ret=can_liftup_state_write(false);
-        if(ret==0)
-          snprintf(ans, maxlen, "%s: MECOS AMB lifted DOWN\n", OKS);
+        // I won't lift down unless I can read that MECOS speed is zero
+        vact=1L;
+        ret=can_hz_actual_read((unsigned long *)&vact);
+        if((ret!=0)||(vact|=0L))
+          {
+          snprintf(ans, maxlen, "%s: won't lift down when MECOS speed is not zero\n", ERRS);
+          }
         else
-          snprintf(ans, maxlen, "%s: CAN error writing liftup state\n", ERRS);
+          {
+          ret=can_liftup_state_write(false);
+          if(ret==0)
+            snprintf(ans, maxlen, "%s: MECOS AMB lifted DOWN\n", OKS);
+          else
+            snprintf(ans, maxlen, "%s: CAN error writing liftup state\n", ERRS);
+          }
         }
       else
         snprintf(ans, maxlen, "%s: use ON/OFF with MECOS:LIFTUP command\n", ERRS);
