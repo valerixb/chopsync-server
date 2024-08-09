@@ -31,7 +31,7 @@
 #define CAN_RTR_FLAG 0x40000000U
 #define CAN_ERR_FLAG 0x20000000U
 
-#define RX_TIMEOUT_SEC 4
+#define RX_TIMEOUT_SEC 1
 
 
 /******* protos *******/
