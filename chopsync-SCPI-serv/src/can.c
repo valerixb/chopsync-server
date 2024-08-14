@@ -110,7 +110,7 @@ int can_write_register(unsigned char addr_hi, unsigned char addr_lo, unsigned ch
   nbytes = write(can_sock, &frame, sizeof(frame)); 
   if(nbytes != sizeof(frame))
     {
-    perror("CAN frame only partially sent\n");
+    perror("CAN frame only partially sent");
     return -1;
     }
 
@@ -142,7 +142,7 @@ int can_read_register(unsigned char addr_hi, unsigned char addr_lo, unsigned cha
   nbytes = write(can_sock, &frame, sizeof(frame)); 
   if(nbytes != sizeof(frame))
     {
-    perror("CAN frame only partially sent\n");
+    perror("CAN frame only partially sent");
     return -1;
     }
 
