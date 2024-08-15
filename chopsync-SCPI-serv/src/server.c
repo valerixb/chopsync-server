@@ -900,8 +900,7 @@ void parseMECOS_FAULT(char *ans, size_t maxlen, int rw)
 
 void parseMECOS_STABLE(char *ans, size_t maxlen, int rw)
   {
-  int ret, f;
-  bool enabled;
+  int f;
   
   if(rw==READ)
     {
