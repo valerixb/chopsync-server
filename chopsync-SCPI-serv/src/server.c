@@ -900,17 +900,16 @@ void parseMECOS_FAULT(char *ans, size_t maxlen, int rw)
 
 void parseMECOS_STABLE(char *ans, size_t maxlen, int rw)
   {
-  int ret;
+  int ret, f;
   bool enabled;
   
   if(rw==READ)
     {
-    // ask MECOS whether external control is enabled
-    ret=can_ext_ctl_enabled_read(&enabled);
-    if(ret==0)
-      snprintf(ans, maxlen, "%s: %s\n", OKS, enabled?"ON":"OFF");
-    else
-      snprintf(ans, maxlen, "%s: CAN error reading MECOS stable state (=ext control enable)\n", ERRS);
+    // readback MECOS CLK frequency: it becomes ~6kHz when it's ready 
+    // to accept external commands; otherwise it's zero;
+    // let's put a threshold mid-way, at 3 kHz
+    f=(int)readreg(MECOS_FREQ_REG);
+    snprintf(ans, maxlen, "%s: %s\n", OKS, (f>3000)?"ON":"OFF");
     }
   else
     snprintf(ans, maxlen, "%s: write operation not supported\n", ERRS);

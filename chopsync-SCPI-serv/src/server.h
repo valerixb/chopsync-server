@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: aug  8 2024                   ***
+ ***  latest rev: aug 15 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -61,6 +61,7 @@
 
 #define BUNCHMARKER_FREQ_REG 7
 #define CHOPPER_FREQ_REG 8
+#define MECOS_FREQ_REG 13
 #define BUNCHMARKER_PSCALER_REG 9
 #define CHOPPER_PSCALER_REG 10
 
