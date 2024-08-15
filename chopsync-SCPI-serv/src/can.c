@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync CAN interface to MECOS           ***
  ***                                            ***
- ***  latest rev: aug  8 2024                   ***
+ ***  latest rev: aug 15 2024                   ***
  ***                                            ***
  **************************************************/ 
 // code derived from inno-maker USB-CAN interface sample code:
@@ -24,9 +24,9 @@ int open_can(void)
   struct can_filter rfilter[1];
   struct timeval tv;
 
-  // must close can device before set baud rate!
+  // must close can device before setting baud rate
   system("sudo ifconfig can0 down");
-  //below mean depend on iprout tools ,not ip tool with busybox
+  //below mean depend on iproute tools ,not ip tool with busybox
   system("sudo ip link set can0 type can bitrate 1000000");
   //system("sudo echo 1000000 > /sys/class/net/can0/can_bittiming/bitrate");
   system("sudo ifconfig can0 up");
@@ -111,6 +111,11 @@ int can_write_register(unsigned char addr_hi, unsigned char addr_lo, unsigned ch
   if(nbytes != sizeof(frame))
     {
     perror("CAN frame only partially sent");
+    // close and re-open CAN interface to flush buffers
+    (void)close_can();
+    can_present=open_can();
+    if(can_present!=0)
+      perror("Problem reopening CAN interface");
     return -1;
     }
 

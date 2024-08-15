@@ -82,6 +82,9 @@
 #define MECOS_MAX_SPEED    1000
 
 
+/*** globals ***/
+extern int can_present;
+
 /***  protos  ***/
 
 int          memorymap(void);

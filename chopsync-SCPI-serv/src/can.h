@@ -26,6 +26,7 @@
 #include <linux/can/raw.h>
 #include <errno.h>
 #include <sys/time.h>
+#include "server.h"
 // Special address description flags for CAN_ID
 #define CAN_EFF_FLAG 0x80000000U
 #define CAN_RTR_FLAG 0x40000000U
