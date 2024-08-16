@@ -80,7 +80,7 @@
 #define POW_2_12 4096.
 #define POW_2_7 128.
 
-#define MECOS_MAX_SPEED    1000
+#define MECOS_MAX_SPEED    800
 
 
 /*** globals ***/
