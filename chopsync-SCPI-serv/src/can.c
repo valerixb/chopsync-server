@@ -338,3 +338,11 @@ int can_ext_ctl_enabled_read(bool *enabled)
   
   return ret;
   }
+
+
+//-------------------------------------------------------------------
+
+int can_reset_faults(void)
+  {
+  return(can_write_register(0x20, 0x0E, 0x00, 1UL));
+  }

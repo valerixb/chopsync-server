@@ -51,5 +51,6 @@ int can_general_fault_read(unsigned long int *fault_ptr);
 int can_rotation_state_read(bool *rotating);
 int can_rotation_state_write(bool rotating);
 int can_ext_ctl_enabled_read(bool *enabled);
+int can_reset_faults(void);
 
 #endif

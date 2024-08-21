@@ -2,7 +2,7 @@
  ***                                            ***
  ***  chopsync TCP server (kinda SCPI)          ***
  ***                                            ***
- ***  latest rev: aug  8 2024                   ***
+ ***  latest rev: aug 21 2024                   ***
  ***                                            ***
  **************************************************/ 
 
@@ -898,6 +898,25 @@ void parseMECOS_FAULT(char *ans, size_t maxlen, int rw)
 
 //-------------------------------------------------------------------
 
+void parseMECOS_FAULT_RESET(char *ans, size_t maxlen, int rw)
+  {
+  int ret;
+
+  if(rw==READ)
+    snprintf(ans, maxlen, "%s: read operation not supported\n", ERRS);
+  else
+    {
+    ret=can_reset_faults();
+    if(ret==0)
+      snprintf(ans, maxlen, "%s: MECOS fault register cleared\n", OKS);
+    else
+      snprintf(ans, maxlen, "%s: CAN error resetting MECOS fault register\n", ERRS);  
+    }
+  }
+
+
+//-------------------------------------------------------------------
+
 void parseMECOS_STABLE(char *ans, size_t maxlen, int rw)
   {
   int f;
@@ -971,6 +990,7 @@ void printHelp(int filedes)
   sendback(filedes,"MECOS:ROTation {ON|OFF}       : starts/stops chopper rotation\n");
   sendback(filedes,"MECOS:ROTation?               : query chopper rotation state\n");
   sendback(filedes,"MECOS:FAULT?                  : returns ON in case of any faults in MECOS AMB; OFF for no faults \n");
+  sendback(filedes,"MECOS:FAULT_RESET             : resets all bits in MECOS AMB fault register\n");
   sendback(filedes,"MECOS:STABLE?                 : returns ON if MECOS AMB rotation is stable and external control\n");
   sendback(filedes,"                                by the chopper synchronizer is possible; OFF means that AMB speed is not stable yet,\n");
   sendback(filedes,"                                so it is not possible to engage the chopper synchronizer\n");
@@ -1054,6 +1074,8 @@ void parse(char *buf, char *ans, size_t maxlen, int filedes)
     parseMECOS_ROTATION(ans, maxlen, rw);
   else if(strcmp(p,"MECOS:FAULT")==0)
     parseMECOS_FAULT(ans, maxlen, rw);
+  else if(strcmp(p,"MECOS:FAULT_RESET")==0)
+    parseMECOS_FAULT_RESET(ans, maxlen, rw);
   else if(strcmp(p,"MECOS:STABLE")==0)
     parseMECOS_STABLE(ans, maxlen, rw);
   else if(strcmp(p,"HELP")==0)

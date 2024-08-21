@@ -116,6 +116,7 @@ void         parseMECOS_HZ_ACT(char *ans, size_t maxlen, int rw);
 void         parseMECOS_LIFTUP(char *ans, size_t maxlen, int rw);
 void         parseMECOS_ROTATION(char *ans, size_t maxlen, int rw);
 void         parseMECOS_FAULT(char *ans, size_t maxlen, int rw);
+void         parseMECOS_FAULT_RESET(char *ans, size_t maxlen, int rw);
 void         parseMECOS_STABLE(char *ans, size_t maxlen, int rw);
 void         printHelp(int filedes);
 void         parse(char *buf, char *ans, size_t maxlen, int filedes);
